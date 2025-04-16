@@ -1,0 +1,17 @@
+# Ignore PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Ignore compiled Python files
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore virtual environment (if using)
+venv/
+.env/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
