@@ -1,4 +1,5 @@
 import os
+import sys
 from tkinter import END, ttk, Listbox, IntVar
 
 from PIL import ImageTk, Image
@@ -149,12 +150,19 @@ class CreateModel:
 
         # Images
         try:
+
+            # Determine the base directory depending on whether this is a script or binary
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+
             create_model_tab_image = ImageTk.PhotoImage(
                 Image.open(os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
+                    base_dir,
                     "..",
                     "assets",
-                    "model_maker_image.png")
+                    "tensor_foundry_image.png")
                 ).resize((self.configuration.app_image_size, self.configuration.app_image_size)))
 
         except FileNotFoundError:
