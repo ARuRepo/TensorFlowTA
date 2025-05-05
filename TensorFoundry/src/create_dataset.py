@@ -9,7 +9,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from application_utils import DialogType, read_output_labels, read_task_labels, filepath_dialog
-from src.input_dialog import InputDialog
+from input_dialog import InputDialog
 
 
 class CreateDataset:

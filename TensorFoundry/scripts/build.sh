@@ -6,8 +6,11 @@ OPTIONS="--onefile --windowed --name TensorFoundry"
 ASSETS_FOLDER="../assets"
 CONFIG_FILE="../src/*.conf"
 
+# Create the virtual environment
+source venv.sh
+
 # Run PyInstaller
-pyinstaller $OPTIONS $PATHS $MAIN_SCRIPT
+../venv/bin/python3 -m PyInstaller $OPTIONS $PATHS $MAIN_SCRIPT
 
 if [ $? -ne 0 ]; then
     echo "❌ Error: PyInstaller failed! Check the logs above for details."
@@ -30,6 +33,8 @@ if ls $CONFIG_FILE 1> /dev/null 2>&1; then
 else
     echo "⚠️ Warning: No config files found, skipping..."
 fi
+
+deactivate
 
 echo "✅ Build successful! Check the 'dist' folder for the executable."
 exit 0  # Exit successfully

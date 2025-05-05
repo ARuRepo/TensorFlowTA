@@ -7,7 +7,7 @@ from ttkthemes.themed_tk import ThemedTk
 from create_dataset import CreateDataset
 from create_model import CreateModel
 from dataset_preview import DatasetPreview
-from src.configuration import Configuration
+from configuration import Configuration
 from tensorflow_model import TensorflowModel
 from train_model import TrainModel
 

@@ -4,7 +4,7 @@ from tkinter import END, ttk, Listbox, IntVar
 from PIL import ImageTk, Image
 
 from application_utils import DialogType, filepath_dialog, validate_spinbox
-from src.input_dialog import InputDialog
+from input_dialog import InputDialog
 
 
 class CreateModel:
