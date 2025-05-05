@@ -20,4 +20,9 @@ This is by no means meant to be a battle tested TA solution but more of a resear
 
 ################################################################################
 
-[o_o] The repository is still taking shape! WIP
+The scripts -folder inside TensorFoundry contains scripts to build a binary using pyinstaller (build.sh) or run directly
+inside a generated virtual environment (run.sh). Make sure to grant sufficient permissions for these!
+
+################################################################################
+
+[o_o] The repository is still taking shape and support is being added for different OS... - WIP!
