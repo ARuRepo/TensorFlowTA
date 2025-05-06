@@ -1,0 +1,38 @@
+# Gradle files
+.gradle/
+build/
+
+# Local configuration
+/local.properties
+
+# Android Studio
+.idea/
+
+# Log files
+*.log
+
+# APKs and test output
+*.apk
+*.aab
+*.ap_
+app/build/
+captures/
+
+# Generated files
+*.iml
+out/
+gen/
+bin/
+
+# ProGuard
+proguard/
+
+# Kotlin/Java build cache
+.kotlinc/
+.classpath
+.project
+.settings/
+
+# Misc
+.DS_Store
+Thumbs.db
