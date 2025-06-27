@@ -49,11 +49,22 @@ class CreateDataset:
             task_index = self.task_listbox.curselection()
 
             # Display an image based on whether a task exists
-            if task_index:
-                self.plot_source(self.source_entries[task_index[0]][0],
-                                 self.source_entries[task_index[0]][1][0])
+            self.display_source_image(task_index)
+
+    # Method to display an image based on whether a task exists
+    def display_source_image(self, task_index):
+        if task_index:
+
+            selected_entry = self.source_entries[task_index[0]]
+
+            if len(selected_entry[1]) > 0:
+                self.plot_source(selected_entry[0],
+                                 selected_entry[1][0])
             else:
-                self.plot_source(self.source_entries[0][0], self.source_entries[0][1][0])
+                self.clear_source()
+
+        else:
+            self.plot_source(self.source_entries[0][0], self.source_entries[0][1][0])
 
     # Method for handling the import task button
     def import_task_button(self):
@@ -470,7 +481,8 @@ class CreateDataset:
 
         # Display the first image to begin the dataset creation
         if self.source_entries:
-            self.plot_source(self.source_entries[0][0], self.source_entries[0][1][0])
+            task_index = self.task_listbox.curselection()
+            self.display_source_image(task_index)
 
     # Method which creates source entries
     def create_source_entries(self):
@@ -494,7 +506,7 @@ class CreateDataset:
             self.create_tasks_file()
 
         # If no new images were found then setting back to None
-        if len(self.source_entries[0][1]) == 0:
+        if all(len(entry[1]) == 0 for entry in self.source_entries):
             self.log_message("Could not find any new images from: {}".format(self.source_images_path))
             self.source_entries = None
             return
