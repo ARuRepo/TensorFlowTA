@@ -345,7 +345,7 @@ class CreateDataset:
         self.undo_linking()
 
     # Method for skipping the current source image
-    def skip_image_button(self):
+    def skip_output_button(self):
         self.link_output(skip=True)
 
     # Method which determine the current source entry index based on any selected task
@@ -639,10 +639,10 @@ class CreateDataset:
             width=self.configuration.app_button_size
         )
 
-        skip_image_button = ttk.Button(
+        skip_output_button = ttk.Button(
             create_dataset_tab,
             text="Skip output",
-            command=self.skip_image_button,
+            command=self.skip_output_button,
             width=self.configuration.app_button_size
         )
 
@@ -780,12 +780,12 @@ class CreateDataset:
                                  pady=self.configuration.app_padding,
                                  expand=False)
 
-        skip_image_button.pack(side="top",
-                               fill='x',
-                               anchor="center",
-                               padx=self.configuration.app_padding,
-                               pady=self.configuration.app_padding,
-                               expand=False)
+        skip_output_button.pack(side="top",
+                                fill='x',
+                                anchor="center",
+                                padx=self.configuration.app_padding,
+                                pady=self.configuration.app_padding,
+                                expand=False)
 
         load_dataset_button.pack(side="bottom",
                                  fill='x',
