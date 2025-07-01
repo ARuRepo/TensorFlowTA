@@ -7,6 +7,7 @@ from PIL.Image import Resampling
 from matplotlib import image as mpimg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from sympy import false
 
 from application_utils import DialogType, read_output_labels, read_task_labels, filepath_dialog
 from input_dialog import InputDialog
@@ -223,8 +224,8 @@ class CreateDataset:
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    # Method for adding a task to an output
-    def link_output_button(self):
+    # Method to link output or skip it respectively
+    def link_output(self, skip=False):
 
         # Sanity check in case no source entries were found
         if self.source_entries is None:
@@ -247,29 +248,38 @@ class CreateDataset:
         # Output index
         link_output_index = self.link_output_listbox.curselection()
 
-        if not link_output_index:
-            self.log_message("No dataset output selected!")
-            return
-
-        link_output_name = self.link_output_listbox.get(link_output_index)
-
         # Update the image name if task is selected
         source_image_name = os.path.basename(self.source_entries[source_entry_index][1][0])
 
-        if task_index:
-            source_image_name = (
-                    os.path.splitext(source_image_name)[0] + "_" + task_name + ".png")
+        # Initialize the image path
+        dataset_image_path = ""
 
-        dataset_image_path = os.path.join(self.dataset_folder, link_output_name, source_image_name)
+        # Checking if we were skipping the image
+        if not skip:
 
-        # Save the image to the destination dataset folder as bitmap
-        self.save_image(self.source_entries[source_entry_index][1][0], dataset_image_path)
+            if not link_output_index:
+                self.log_message("No dataset output selected!")
+                return
 
-        # Augment the image with the task index if available so it can be recognized
-        if task_index:
-            self.augment_image_task(dataset_image_path, task_index[0])
+            link_output_name = self.link_output_listbox.get(link_output_index)
 
-        self.log_message("Added image: {} into dataset output: '{}'".format(source_image_name, link_output_name))
+            if task_index:
+                source_image_name = (
+                        os.path.splitext(source_image_name)[0] + "_" + task_name + ".png")
+
+            dataset_image_path = os.path.join(self.dataset_folder, link_output_name, source_image_name)
+
+            # Save the image to the destination dataset folder as bitmap
+            self.save_image(self.source_entries[source_entry_index][1][0], dataset_image_path)
+
+            # Augment the image with the task index if available so it can be recognized
+            if task_index:
+                self.augment_image_task(dataset_image_path, task_index[0])
+
+            self.log_message("Added image: {} into dataset output: '{}'".format(source_image_name, link_output_name))
+
+        else:
+            self.log_message("Skipped source image: {}".format(source_image_name))
 
         source_task_name = self.source_entries[source_entry_index][0]
         source_image_path = self.source_entries[source_entry_index][1][0]
@@ -280,7 +290,8 @@ class CreateDataset:
                                              source_entry_index,
                                              source_task_name,
                                              source_image_path,
-                                             dataset_image_path
+                                             dataset_image_path,
+                                             skip
                                          )
                                          )
 
@@ -300,15 +311,16 @@ class CreateDataset:
         # Display the next image
         self.plot_source(source_task_name, source_image_path)
 
-    # Method for undoing a linking which was just done
-    def undo_linking_button(self):
+    # Method to undo the linking
+    def undo_linking(self):
 
         # Sanity check to see if there are any recorded actions
         if len(self.dataset_link_actions) == 0:
             return
 
         # Delete existing image from dataset
-        self.delete_image(self.dataset_link_actions[0][3])
+        if not self.dataset_link_actions[0][4]:
+            self.delete_image(self.dataset_link_actions[0][3])
 
         # Get the source entry index
         source_entry_index = self.dataset_link_actions[0][0]
@@ -326,7 +338,17 @@ class CreateDataset:
         # Finally remove the link action as it has been undone
         self.dataset_link_actions.pop(0)
 
-        return
+    # Method for adding a task to an output
+    def link_output_button(self):
+        self.link_output()
+
+    # Method for undoing a linking which was just done
+    def undo_linking_button(self):
+        self.undo_linking()
+
+    # Method for skipping the current source image
+    def skip_image_button(self):
+        self.link_output(skip=True)
 
     # Method which determine the current source entry index based on any selected task
     def get_source_entry_index(self, task_name):
@@ -619,6 +641,13 @@ class CreateDataset:
             width=self.configuration.app_button_size
         )
 
+        skip_image_button = ttk.Button(
+            create_dataset_tab,
+            text="Skip output",
+            command=self.skip_image_button,
+            width=self.configuration.app_button_size
+        )
+
         create_dataset_button = ttk.Button(
             create_dataset_tab,
             text="Create dataset",
@@ -752,6 +781,13 @@ class CreateDataset:
                                  padx=self.configuration.app_padding,
                                  pady=self.configuration.app_padding,
                                  expand=False)
+
+        skip_image_button.pack(side="top",
+                               fill='x',
+                               anchor="center",
+                               padx=self.configuration.app_padding,
+                               pady=self.configuration.app_padding,
+                               expand=False)
 
         load_dataset_button.pack(side="bottom",
                                  fill='x',
