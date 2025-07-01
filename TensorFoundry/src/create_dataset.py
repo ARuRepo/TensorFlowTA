@@ -7,8 +7,6 @@ from PIL.Image import Resampling
 from matplotlib import image as mpimg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from sympy import false
-
 from application_utils import DialogType, read_output_labels, read_task_labels, filepath_dialog
 from input_dialog import InputDialog
 
