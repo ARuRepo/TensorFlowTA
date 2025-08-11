@@ -58,7 +58,7 @@ class TrainModel:
             class_names, load_classes = read_output_labels(model_name, model_path)
 
             if load_dataset and load_classes:
-                training_dataset = (
+                training_dataset, validation_dataset = (
                     DataSet(self.configuration,
                             self.log_message,
                             self.plot_dataset,
@@ -67,14 +67,14 @@ class TrainModel:
                                      class_names)
                 )
 
-                if training_dataset is None:
+                if training_dataset is None or validation_dataset is None:
                     return
 
                 self.log_message("Created datasets for classes {}".format(class_names))
 
                 self.tensorflow_model.stop_training = False
                 self.tensorflow_model.train_model(
-                    model_path, self.epoch_var, training_dataset, class_names, self.plot_results)
+                    model_path, self.epoch_var, training_dataset, validation_dataset, class_names, self.plot_results)
 
         # Method for the stop training button
 

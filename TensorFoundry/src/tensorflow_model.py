@@ -11,6 +11,7 @@ class TensorflowModel(tf.Module):
         self.log_message = log_message
         self.refresh_application = refresh_application
         self.stop_training = False
+        self.model = None
 
     # Method for creating the model
     def create_model(self, input_size, output_size, model_path, output_names):
@@ -24,6 +25,7 @@ class TensorflowModel(tf.Module):
             tf.keras.layers.MaxPooling2D(),
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dropout(0.5),
             tf.keras.layers.Dense(output_size, activation='softmax', name="output")
         ])
 
@@ -43,11 +45,11 @@ class TensorflowModel(tf.Module):
     def compile_model(self):
         self.model.compile(
             optimizer='adam',
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
             metrics=['accuracy'])
 
     # Method for training a supervised model
-    def train_model(self, model_path, epochs, training_dataset, class_names, plot_results):
+    def train_model(self, model_path, epochs, training_dataset, validation_dataset, class_names, plot_results):
 
         # Load a model and set as the current model
         self.model = tf.keras.models.load_model(model_path)
@@ -60,12 +62,12 @@ class TensorflowModel(tf.Module):
         # Train the model
         self.log_message("Starting the supervised training sequence with {} epochs!".format(epochs.get()))
         self.model.fit(training_dataset,
-                       validation_data=training_dataset,
+                       validation_data=validation_dataset,
                        epochs=epochs.get(),
                        callbacks=[TrainingCallback(
                            self.log_message, self.refresh_application, plot_results, self.stop_training_check)])
 
-        loss, accuracy = self.model.evaluate(training_dataset, verbose=2)
+        loss, accuracy = self.model.evaluate(validation_dataset, verbose=2)
         self.log_message("Model test dataset accuracy: {:5.2f}% and loss: {:5.4f}".format(100 * accuracy, loss))
 
         # Save the trained model

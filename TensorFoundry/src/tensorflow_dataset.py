@@ -30,21 +30,35 @@ class DataSet:
         try:
             training_dataset = tf.keras.utils.image_dataset_from_directory(
                 path,
+                validation_split=self.configuration.validation_split,
+                subset="training",
+                seed=self.configuration.training_seed,
+                image_size=(self.input_size[0], self.input_size[1]),
+                batch_size=self.batch_size,
+                class_names=class_names
+            )
+
+            validation_dataset = tf.keras.utils.image_dataset_from_directory(
+                path,
+                validation_split=self.configuration.validation_split,
+                subset="validation",
+                seed=self.configuration.training_seed,
                 image_size=(self.input_size[0], self.input_size[1]),
                 batch_size=self.batch_size,
                 class_names=class_names
             )
         except:
             self.log_message("Error creating dataset, please check model and dataset output compatibility!")
-            return None
+            return None, None
 
         # Plotting the dataset
         self.plot_dataset(training_dataset)
 
         # Optimizing the datasets for training
         training_dataset = training_dataset.cache().prefetch(buffer_size=AUTOTUNE)
+        validation_dataset = validation_dataset.cache().prefetch(buffer_size=AUTOTUNE)
 
-        return training_dataset
+        return training_dataset, validation_dataset
 
     # Method which loads a single image and labels to test a model's output
     def create_test_data(self, model_name, model_path, image_path):

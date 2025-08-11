@@ -39,6 +39,8 @@ class Configuration:
         # Training
         self.epoch_count = 1000
         self.min_dataset_size = 20
+        self.validation_split = 0.2
+        self.training_seed = 314159
 
         # Read the config file
         self.read_config()
@@ -130,5 +132,11 @@ class Configuration:
 
                     if "MIN_DATASET_SIZE" in config.upper():
                         self.min_dataset_size = int(value)
+
+                    if "VALIDATION_SPLIT" in config.upper():
+                        self.validation_split = float(value)
+
+                    if "TRAINING_SEED" in config.upper():
+                        self.training_seed = int(value)
 
         return
