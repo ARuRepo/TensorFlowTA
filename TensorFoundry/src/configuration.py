@@ -41,6 +41,7 @@ class Configuration:
         self.min_dataset_size = 20
         self.validation_split = 0.2
         self.training_seed = 314159
+        self.zoom_factor = 0.2
 
         # Read the config file
         self.read_config()
@@ -138,5 +139,8 @@ class Configuration:
 
                     if "TRAINING_SEED" in config.upper():
                         self.training_seed = int(value)
+
+                    if "ZOOM_FACTOR" in config.upper():
+                        self.zoom_factor = float(value)
 
         return

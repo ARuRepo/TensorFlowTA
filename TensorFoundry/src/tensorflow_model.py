@@ -16,7 +16,10 @@ class TensorflowModel(tf.Module):
     # Method for creating the model
     def create_model(self, input_size, output_size, model_path, output_names):
         self.model = tf.keras.Sequential([
-            tf.keras.layers.Rescaling(1. / 255, input_shape=(input_size, input_size, self.configuration.num_channels)),
+            tf.keras.layers.RandomZoom(height_factor=self.configuration.zoom_factor,
+                                       width_factor=self.configuration.zoom_factor,
+                                       input_shape=(input_size, input_size, self.configuration.num_channels)),
+            tf.keras.layers.Rescaling(1. / 255),
             tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu'),
             tf.keras.layers.MaxPooling2D(),
             tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu'),
