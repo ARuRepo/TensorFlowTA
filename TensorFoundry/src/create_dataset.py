@@ -115,6 +115,7 @@ class CreateDataset:
         if task_index:
 
             if self.dataset_folder:
+                self.remove_skipped_entry(self.task_listbox.get(task_index))
                 self.remove_source_entries(task_index[0])
 
             self.task_listbox.delete(task_index)
@@ -177,7 +178,7 @@ class CreateDataset:
 
             image_name += image_extension
 
-            # Searching if the current image is not included in any existing images in the dataset
+            # Searching if the current image is not included in any existing or skipped images in the dataset
             found = False
             for root, dirs, files in os.walk(self.dataset_folder):
 
@@ -187,6 +188,14 @@ class CreateDataset:
                 if image_name in png_files:
                     found = True
                     break
+
+            # Try to find in the skipped entries file
+            skipped_file_path = os.path.join(self.dataset_folder, "dataset_skipped_entries.txt")
+            if os.path.exists(skipped_file_path):
+                with open(skipped_file_path, "r") as skipped_file:
+                    skipped_entries = {line.strip() for line in skipped_file}
+                    if image_name in skipped_entries:
+                        found = True
 
             if not found:
                 images_list.append(source_image)
@@ -249,6 +258,10 @@ class CreateDataset:
         # Update the image name if task is selected
         source_image_name = os.path.basename(self.source_entries[source_entry_index][1][0])
 
+        if task_index:
+            source_image_name = (
+                    os.path.splitext(source_image_name)[0] + "_" + task_name + ".png")
+
         # Initialize the image path
         dataset_image_path = ""
 
@@ -260,11 +273,6 @@ class CreateDataset:
                 return
 
             link_output_name = self.link_output_listbox.get(link_output_index)
-
-            if task_index:
-                source_image_name = (
-                        os.path.splitext(source_image_name)[0] + "_" + task_name + ".png")
-
             dataset_image_path = os.path.join(self.dataset_folder, link_output_name, source_image_name)
 
             # Save the image to the destination dataset folder as bitmap
@@ -277,6 +285,9 @@ class CreateDataset:
             self.log_message("Added image: {} into dataset output: '{}'".format(source_image_name, link_output_name))
 
         else:
+            with open(os.path.join(self.dataset_folder, "dataset_skipped_entries.txt"), "a") as file:
+                file.write(source_image_name + "\n")
+
             self.log_message("Skipped source image: {}".format(source_image_name))
 
         source_task_name = self.source_entries[source_entry_index][0]
@@ -316,9 +327,17 @@ class CreateDataset:
         if len(self.dataset_link_actions) == 0:
             return
 
-        # Delete existing image from dataset
+        # Delete existing image from dataset if not skipped, otherwise delete from skipped entries file
         if not self.dataset_link_actions[0][4]:
             self.delete_image(self.dataset_link_actions[0][3])
+        else:
+            filename = os.path.splitext(os.path.basename(self.dataset_link_actions[0][2]))[0]
+            task_name = self.dataset_link_actions[0][1]
+
+            if task_name:
+                filename = f"{filename}_{task_name}"
+
+            self.remove_skipped_entry(f"{filename}.png")
 
         # Get the source entry index
         source_entry_index = self.dataset_link_actions[0][0]
@@ -332,6 +351,9 @@ class CreateDataset:
 
         # Display the returned image
         self.plot_source(source_task_name, source_image_path)
+
+        # Set the task selection back to the matching task
+        self.set_task_selection(source_task_name)
 
         # Finally remove the link action as it has been undone
         self.dataset_link_actions.pop(0)
@@ -556,11 +578,23 @@ class CreateDataset:
 
         return
 
+    # Method which removes a skipped entry from the skipped entries file
+    def remove_skipped_entry(self, entry_name):
+        skipped_file_path = os.path.join(self.dataset_folder, "dataset_skipped_entries.txt")
+        if os.path.exists(skipped_file_path):
+            with open(skipped_file_path, "r") as file:
+                lines = file.readlines()
+
+            # Filter out lines containing the entry name
+            filtered_lines = [line for line in lines if entry_name not in line]
+
+            # Overwrite the file with filtered content
+            with open(skipped_file_path, "w") as file:
+                file.writelines(filtered_lines)
+
     # Method which writes the current tasks into the dataset folder
     def create_tasks_file(self):
-
         if self.dataset_folder:
-
             task_names = self.task_listbox.get(0, END)
             tasks_path = os.path.join(self.dataset_folder, "dataset_tasks.txt")
 
@@ -574,6 +608,17 @@ class CreateDataset:
         c = 1013904223
         m = 2 ** 32
         return ((a * seed + c) % m) % 256
+
+    # Method which sets the task lisbox selection based on a matching name
+    def set_task_selection(self, task_name):
+        items = self.task_listbox.get(0, END)
+        for index, item in enumerate(items):
+            if item == task_name:
+                self.task_listbox.selection_clear(0, END)
+                self.task_listbox.selection_set(index)
+                self.task_listbox.activate(index)
+                self.task_listbox.see(index)
+                break
 
     # Method which plots the source image
     def plot_source(self, task_name, image_path):
