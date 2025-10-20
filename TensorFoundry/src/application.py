@@ -21,7 +21,7 @@ class Application:
 
         # Creating the TKInter window as application
         self.app = ThemedTk(theme="black")
-        self.app.title("TensorFoundry v0.1")
+        self.app.title(f"TensorFoundry v{self.configuration.version}")
         self.app.minsize(self.configuration.window_width, self.configuration.window_height)
         self.app.maxsize(self.configuration.window_width, self.configuration.window_height)
         self.app.resizable(False, False)

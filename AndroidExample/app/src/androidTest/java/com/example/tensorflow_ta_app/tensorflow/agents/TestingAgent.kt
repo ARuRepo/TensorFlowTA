@@ -1,12 +1,10 @@
 package com.example.tensorflow_ta_app.tensorflow.agents
 
 import android.util.Log
-import com.example.tensorflow_ta_app.utilities.ActionUtils
 import com.example.tensorflow_ta_app.data.TestData
 import com.example.tensorflow_ta_app.data.TestData.ActionData
-import com.example.tensorflow_ta_app.data.TestData.AssertData
 import com.example.tensorflow_ta_app.tensorflow.models.TestingModel
-import org.tensorflow.lite.Interpreter
+import com.example.tensorflow_ta_app.utilities.ActionUtils
 
 /**
  * This class is for calling the model specific classes to run inference and then handle the results
@@ -16,64 +14,72 @@ class TestingAgent : TestingModel() {
 
     private val logTag = "TestingAgent"
     private val actionUtils = ActionUtils()
-    private val taskModel: Interpreter = createModel("taskmodel.tflite")
-    private val assertModel: Interpreter = createModel("assertmodel.tflite")
     private val taskLabels: List<String> = ActionData.entries.map { it.name }
-    private val assertLabels: List<String> = AssertData.entries.map { it.name }
-    private val taskInputSize: Int = getInputSize(taskModel)
-    private val assertInputSize: Int = getInputSize(assertModel)
-
     private val taskComplete = ActionData.TASK_COMPLETE
-    private val inferenceLimit = 0.9f
+    private val inferenceLimit = 0.3f
     private val actionsLimit = 10
+    private val navigationModel = createModel("navigation_model.tflite")
+    private val assertModelsMap = mapOf(
+        "LoginViewAssertData" to createModel("login_view_model.tflite"),
+        "FirstViewAssertData" to createModel("first_view_model.tflite"),
+        "SecondViewAssertData" to createModel("second_view_model.tflite"),
+        "ThirdViewAssertData" to createModel("third_view_model.tflite")
+    )
 
     /**
-     * Function which predicts an action using the task model
-     * @param task the current task to execute
-     * @param state the state which is to be validated to be either visible or not
+     * Function which navigates and asserts a view
+     * @param navigationTask the current navigation task enumeration to execute
+     * @param viewEntities list of enumeration values representing entities which are to be asserted
      * @return Boolean value whether the task is completed and state is asserted to match expectation
      */
-    fun performTaskAndAssert(task: TestData.TaskData, state: AssertData): Boolean {
-        performTask(task)
-        return assertState(state)
+    fun <T : Enum<T>> navigateAndAssert(
+        navigationTask: TestData.NavigationData,
+        viewEntities: List<T>
+    ): Boolean {
+        performNavigation(navigationTask)
+        return assertViewEntities(viewEntities)
     }
 
     /**
-     * Function which predicts an action using the task model
-     * @param task the current task to execute
-     * @return true or false if the task was completed successfully
+     * Function which predicts an action using the navigation model
+     * @param navigationTask the current navigation task enumeration to execute
+     * @return true or false if the navigation task was completed successfully
      */
-    fun performTask(task: TestData.TaskData) {
-
-        val taskName = TestData.TaskData.entries[task.ordinal].name
+    fun performNavigation(navigationTask: TestData.NavigationData) {
+        val taskName = TestData.NavigationData.entries[navigationTask.ordinal].name
         Log.i(logTag, "Starting to execute task $taskName")
 
-        for (count in 0 until actionsLimit) {
-
-            val state = actionUtils.captureState(taskInputSize, task.ordinal)
+        repeat(actionsLimit) {
+            val state = actionUtils.captureState(
+                getInputSize(navigationModel),
+                navigationTask.ordinal
+            )
 
             // Figure out which action to carry out
-            val inference = inference(taskModel, state, taskLabels)
+            val inference = inference(navigationModel, state, taskLabels)
             val maxScore = inference.predictions.maxByOrNull { it.score }
+
+            Log.d(logTag, "Action predictions: ${inference.predictions}")
 
             // Get the action index based on prediction certainty
             val actionIndex = if (maxScore?.score!! >= inferenceLimit) {
                 inference.predictions.indexOf(maxScore)
             } else {
+                Log.i(logTag, "Task $taskName unable to establish an action!")
                 taskComplete.ordinal
             }
-
-            // Get the action name
-            val actionName = ActionData.entries[inference.predictions.indexOf(maxScore)]
-
-            Log.d(logTag, "Predictions: ${inference.predictions}")
-            Log.i(logTag, "Action to execute $actionName")
 
             // Check if this action index indicates the task is complete
             if (actionIndex == taskComplete.ordinal) {
                 Log.i(logTag, "Task $taskName execution complete!")
                 return
             }
+
+            // Get the action name
+            val actionName = ActionData.entries[inference.predictions.indexOf(maxScore)]
+
+
+            Log.i(logTag, "Action to execute $actionName")
 
             // Perform an action based on what the model suggests
             ActionData.entries[actionIndex].execute()
@@ -84,27 +90,59 @@ class TestingAgent : TestingModel() {
     }
 
     /**
-     * Function which returns true or false based on whether the current State is asserted
-     * @param expectedState the state  which is to be validated to be either visible or not
+     * Function which returns true or false based on whether the current view entities are asserted
+     * @param viewEntities list of enumeration values representing entities which are to be asserted
      * @return Boolean value whether the state is asserted to match expectation
      */
-    fun assertState(expectedState: AssertData): Boolean {
+    fun <T : Enum<T>> assertViewEntities(viewEntities: List<T>): Boolean {
 
-        // Take a screenshot as the state
-        val state = actionUtils.captureState(assertInputSize)
+        // Fetch the assert enumeration class
+        val enumClass = viewEntities.first()::class.java
 
-        // Figure out which state this is supposed to be
-        val inference = inference(assertModel, state, assertLabels)
-        val maxScore = inference.predictions.maxByOrNull { it.score }
-        val stateIndex = inference.predictions.indexOf(maxScore)
+        // Create the model instance by selecting the correct one
+        val assertModel = assertModelsMap[enumClass.simpleName]
+        if (assertModel == null) {
+            Log.e(logTag, "Assertion model name could not be established!")
+            return false
+        }
 
-        // Get the name of the current and expected states
-        val currentName = AssertData.entries[stateIndex].name
-        val expectedName = AssertData.entries[expectedState.ordinal].name
+        // Capture the state
+        val state = actionUtils.captureState(getInputSize(assertModel))
 
-        Log.i(logTag, "State recognized as $currentName and expectation is $expectedName")
+        // Run inference on the model
+        val inference = inference(
+            assertModel,
+            state,
+            enumClass.enumConstants?.map { it.name } ?: emptyList()
+        )
 
-        // Evaluate if this is the view we are looking for
-        return stateIndex == expectedState.ordinal
+        // Establish the results
+        val inferenceResult = inference.predictions
+            .filter { it.score >= inferenceLimit }
+            .mapNotNull { prediction ->
+                viewEntities.find {
+                    it.name.equals(prediction.label, ignoreCase = true)
+                }
+            }
+
+        Log.d(logTag, "Assertion predictions: ${inference.predictions}")
+
+        // Establish the results
+        val expectedEntities = viewEntities.joinToString(", ") { it.name }
+        val inferredEntities = inferenceResult.joinToString(", ") { it.name }
+
+        Log.d(logTag, "Expected view assertion results: $expectedEntities")
+        Log.d(logTag, "Inferred view assertion results: $inferredEntities")
+
+        // Check whether the assertion was successful
+        val assert = viewEntities == inferenceResult
+
+        if (assert) {
+            Log.i(logTag, "View entities asserted successfully!")
+        } else {
+            Log.i(logTag, "View entities assertion failed!")
+        }
+
+        return assert
     }
 }

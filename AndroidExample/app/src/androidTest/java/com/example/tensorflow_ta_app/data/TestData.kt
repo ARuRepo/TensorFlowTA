@@ -2,8 +2,6 @@ package com.example.tensorflow_ta_app.data
 
 import com.example.tensorflow_ta_app.utilities.ActionUtils
 
-// NOTE: The outputs for AssertData and ActionData need to follow the post-training outputs!
-
 /**
  * This class is for holding any data needed for the testing
  */
@@ -12,7 +10,7 @@ class TestData {
     /**
      * Enum for the tasks
      */
-    enum class TaskData {
+    enum class NavigationData {
         PERFORM_LOGIN,
         PERFORM_LOGOUT,
         NAVIGATE_FIRST_SCREEN,
@@ -21,13 +19,46 @@ class TestData {
     }
 
     /**
-     * Enum for the different assertions
+     * Enum for the assertions in the login view
      */
-    enum class AssertData {
-        LOGIN_SCREEN,
-        FIRST_SCREEN,
-        SECOND_SCREEN,
-        THIRD_SCREEN
+    enum class LoginViewAssertData {
+        LOGIN_TITLE,
+        USER_NAME_FIELD,
+        PASSWORD_FIELD,
+        LOGIN_BUTTON
+    }
+
+    /**
+     * Enum for the assertions in the first view
+     */
+    enum class FirstViewAssertData {
+        VIEW_TITLE,
+        SQUARE_SHAPE,
+        NEXT_BUTTON,
+        BACK_BUTTON,
+        LOGOUT_BUTTON
+    }
+
+    /**
+     * Enum for the assertions in the second view
+     */
+    enum class SecondViewAssertData {
+        VIEW_TITLE,
+        CIRCLE_SHAPE,
+        NEXT_BUTTON,
+        BACK_BUTTON,
+        LOGOUT_BUTTON
+    }
+
+    /**
+     * Enum for the assertions in the third view
+     */
+    enum class ThirdViewAssertData {
+        VIEW_TITLE,
+        SQUIRCLE_SHAPE,
+        NEXT_BUTTON,
+        BACK_BUTTON,
+        LOGOUT_BUTTON
     }
 
     /**

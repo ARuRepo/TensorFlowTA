@@ -20,8 +20,6 @@ class DatasetPreview:
             for i in range(16):
                 self.dataset_plot = self.dataset_plot_figure.add_subplot(4, 4, i + 1)
                 self.dataset_plot.imshow(images[i].numpy().astype("uint8"))
-                self.dataset_plot.set_title(dataset.class_names[labels[i]],
-                                            color=self.configuration.app_text_foreground_color)
                 self.dataset_plot.axis("off")
         self.dataset_plot_figure.tight_layout()
         self.dataset_plot_canvas.draw()

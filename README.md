@@ -3,7 +3,7 @@
 This repository is a prototype project for running mobile instrumentation test automation with the help of TensorFlow for Android. 
 
 The repository contains a sample Python tool for creating and training simple TensorFlow .keras models. In addition a sample Android 
-test automation project written in Kotlin is included for using the models in some test automation cases. 
+test automation project written in Kotlin is included for using the models in some test automation cases.
 
 ###
 
@@ -13,6 +13,15 @@ The main points of this entire project are to figure out the following:
 - What benefits or downsides using them would introduce?
 - Is such a solution feasible and more flexible over scripted tests?
 - Will this reduce the amount of boilerplate code in a test automation project?
+
+###
+
+The idea is to train a couple of models to have a ML model make decisions on what to do in terms of app navigation and further assert 
+view contents using multi-label classification models.
+
+###
+
+Currently seems to be compatible with Python 3.12
 
 ###
 

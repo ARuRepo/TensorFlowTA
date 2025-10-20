@@ -37,14 +37,14 @@ def filepath_dialog(app, dialog_type, title, filetypes=("All Files", "*.*")):
 
 # Function for reading the model output labels as actions for linking to a task
 def read_output_labels(model_name, model_path):
-    labels_path = os.path.join(os.path.dirname(model_path), f"{model_name}_output_labels.txt")
+    labels_path = os.path.join(os.path.dirname(model_path), f"{model_name}_output.txt")
 
     # If the file does not exist we return None and False
     if not os.path.isfile(labels_path):
         return None, False
 
     with open(labels_path, "r") as file:
-        return [label.strip() for label in file.readlines()], True
+        return [label.strip() for label in file.readlines()[1:]], True
 
 
 # Function for reading the model output labels as actions for linking to a task

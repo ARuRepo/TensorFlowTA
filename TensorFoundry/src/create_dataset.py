@@ -1,3 +1,4 @@
+import json
 import os
 import platform
 from tkinter import END, messagebox, ttk, Listbox
@@ -82,6 +83,12 @@ class CreateDataset:
                 for line in lines:
                     self.task_listbox.insert(END, line.strip())
 
+            if self.link_output_listbox.size() > 0:
+                self.create_source_entries()
+
+        # Update selection mode for link output listbox
+        self.update_output_listbox_selection()
+
     # Method for handling the add task button
     def add_task_button(self):
 
@@ -98,6 +105,9 @@ class CreateDataset:
 
             self.task_listbox.insert(END, task_name)
             self.task_listbox.yview(END)
+
+            # Update selection mode for link output listbox
+            self.update_output_listbox_selection()
 
             if self.dataset_folder:
                 self.create_source_entries()
@@ -127,6 +137,9 @@ class CreateDataset:
                 if index[0] != task_index[0]
             ]
 
+            # Update selection mode for link output listbox
+            self.update_output_listbox_selection()
+
             if self.task_listbox.size() == 0:
                 self.create_source_entries()
 
@@ -134,19 +147,23 @@ class CreateDataset:
 
         return
 
-    # Method which creates a folder for each specified output
-    def create_dataset_folders(self, dataset_path, dataset_name, output_labels):
+    # Method which creates the dataset structure
+    def create_dataset_structure(self, dataset_path, dataset_name):
 
+        # Create the dataset folder
         self.dataset_folder = os.path.join(dataset_path, dataset_name)
         os.makedirs(self.dataset_folder, exist_ok=True)
 
-        output_folders = [output.strip() for output in output_labels]
+        # Create the images folder
+        images_path = os.path.join(str(self.dataset_folder), "images")
+        os.makedirs(images_path, exist_ok=True)
 
-        for folder in output_folders:
-            folder_path = os.path.join(str(self.dataset_folder), folder)
-            os.makedirs(folder_path, exist_ok=True)
+        # Create empty annotations JSON file
+        annotations_path = os.path.join(str(self.dataset_folder), "annotations.json")
+        with open(annotations_path, 'w') as annotations_file:
+            json.dump({}, annotations_file, indent=2)
 
-        self.log_message("Created dataset structure at: {}".format(self.dataset_folder))
+        self.log_message(f"Created dataset structure at: {self.dataset_folder}")
         return
 
     # Method for reading image files from a target folder
@@ -165,12 +182,11 @@ class CreateDataset:
 
     # Method which filters out image filepaths which already exists in the dataset
     def filter_source_images(self, source_images, task_name):
-
         images_list = []
+        images_folder = os.path.join(self.dataset_folder, "images")
 
-        # Check if the task augmented image exists in the target dataset
+        # Check if the task augmented image exists in the images folder
         for source_image in source_images:
-
             image_name, image_extension = os.path.splitext(os.path.basename(source_image))
 
             if task_name:
@@ -178,24 +194,18 @@ class CreateDataset:
 
             image_name += image_extension
 
-            # Searching if the current image is not included in any existing or skipped images in the dataset
-            found = False
-            for root, dirs, files in os.walk(self.dataset_folder):
+            # Check if image exists in images folder
+            image_path = os.path.join(images_folder, image_name)
+            found = os.path.exists(image_path)
 
-                # Filter to only include .png files
-                png_files = [file for file in files if file.endswith('.png')]
-
-                if image_name in png_files:
-                    found = True
-                    break
-
-            # Try to find in the skipped entries file
-            skipped_file_path = os.path.join(self.dataset_folder, "dataset_skipped_entries.txt")
-            if os.path.exists(skipped_file_path):
-                with open(skipped_file_path, "r") as skipped_file:
-                    skipped_entries = {line.strip() for line in skipped_file}
-                    if image_name in skipped_entries:
-                        found = True
+            # Also check skipped entries file
+            if not found:
+                skipped_file_path = os.path.join(self.dataset_folder, "dataset_skipped_entries.txt")
+                if os.path.exists(skipped_file_path):
+                    with open(skipped_file_path, "r") as skipped_file:
+                        skipped_entries = {line.strip() for line in skipped_file}
+                        if image_name in skipped_entries:
+                            found = True
 
             if not found:
                 images_list.append(source_image)
@@ -205,6 +215,7 @@ class CreateDataset:
     # Method which converts and saves it to target folder
     def save_image(self, image_path, save_path):
         with Image.open(image_path) as image:
+
             # Crop the top bar off the image
             width, height = image.size
             image = image.crop((0, int(height * 0.05), width, height))
@@ -252,8 +263,8 @@ class CreateDataset:
         if len(self.source_entries[source_entry_index][1]) == 0:
             return
 
-        # Output index
-        link_output_index = self.link_output_listbox.curselection()
+        # Get selected output indices (now supports multiple selections)
+        link_output_indices = self.link_output_listbox.curselection()
 
         # Update the image name if task is selected
         source_image_name = os.path.basename(self.source_entries[source_entry_index][1][0])
@@ -268,21 +279,42 @@ class CreateDataset:
         # Checking if we were skipping the image
         if not skip:
 
-            if not link_output_index:
-                self.log_message("No dataset output selected!")
-                return
+            # Save image to the images folder
+            images_folder = os.path.join(self.dataset_folder, "images")
+            dataset_image_path = os.path.join(images_folder, source_image_name)
 
-            link_output_name = self.link_output_listbox.get(link_output_index)
-            dataset_image_path = os.path.join(self.dataset_folder, link_output_name, source_image_name)
-
-            # Save the image to the destination dataset folder as bitmap
+            # Save the image to the images folder
             self.save_image(self.source_entries[source_entry_index][1][0], dataset_image_path)
 
-            # Augment the image with the task index if available so it can be recognized
+            # Augment the image with the task index if available
             if task_index:
                 self.augment_image_task(dataset_image_path, task_index[0])
 
-            self.log_message("Added image: {} into dataset output: '{}'".format(source_image_name, link_output_name))
+            # Create label vector based on selected outputs
+            all_outputs = [self.link_output_listbox.get(i) for i in range(self.link_output_listbox.size())]
+
+            # Create binary vector: 1 if selected, 0 otherwise
+            label_vector = [1 if i in link_output_indices else 0 for i in range(len(all_outputs))]
+
+            # Load existing annotations
+            annotations_path = os.path.join(self.dataset_folder, "annotations.json")
+
+            with open(annotations_path, 'r') as f:
+                annotations = json.load(f)
+
+            # Add new annotation
+            annotations[source_image_name] = label_vector
+
+            # Save updated annotations
+            with open(annotations_path, 'w') as f:
+                json.dump(annotations, f, indent=2)
+
+            # Log selected outputs
+            selected_outputs = [self.link_output_listbox.get(i) for i in link_output_indices]
+            if selected_outputs:
+                self.log_message(f"Added image: {source_image_name} with labels: {', '.join(selected_outputs)}")
+            else:
+                self.log_message(f"Added image: {source_image_name} with no labels selected")
 
         else:
             with open(os.path.join(self.dataset_folder, "dataset_skipped_entries.txt"), "a") as file:
@@ -329,7 +361,29 @@ class CreateDataset:
 
         # Delete existing image from dataset if not skipped, otherwise delete from skipped entries file
         if not self.dataset_link_actions[0][4]:
+            # Delete the image file
             self.delete_image(self.dataset_link_actions[0][3])
+
+            # Remove entry from annotations.json
+            image_name = os.path.basename(self.dataset_link_actions[0][3])
+            annotations_path = os.path.join(self.dataset_folder, "annotations.json")
+
+            try:
+                with open(annotations_path, 'r') as f:
+                    annotations = json.load(f)
+
+                # Remove the annotation entry if it exists
+                if image_name in annotations:
+                    del annotations[image_name]
+
+                    # Save updated annotations
+                    with open(annotations_path, 'w') as f:
+                        json.dump(annotations, f, indent=2)
+
+                    self.log_message(f"Removed annotation for: {image_name}")
+            except Exception as e:
+                self.log_message(f"Error removing annotation: {e}")
+
         else:
             filename = os.path.splitext(os.path.basename(self.dataset_link_actions[0][2]))[0]
             task_name = self.dataset_link_actions[0][1]
@@ -448,7 +502,7 @@ class CreateDataset:
         output_labels, load_outputs = read_output_labels(model_name, model_path)
 
         if not load_outputs:
-            self.log_message("Could not read the {}_output_labels.txt as actions!".format(model_name))
+            self.log_message("Could not read the {}_output.txt!".format(model_name))
             return
 
         # Store the input size of the model
@@ -507,9 +561,12 @@ class CreateDataset:
         for output_label in output_labels:
             self.link_output_listbox.insert(END, output_label.strip())
 
+        # Update selection mode for link output listbox
+        self.update_output_listbox_selection()
+
         if new_dataset:
             # Create the folder structure
-            self.create_dataset_folders(self.dataset_folder, dataset_name, output_labels)
+            self.create_dataset_structure(self.dataset_folder, dataset_name)
 
         # Add dataset tasks
         self.create_source_entries()
@@ -559,15 +616,32 @@ class CreateDataset:
 
     # Method which removes task source entries
     def remove_source_entries(self, task_index):
-
         task_name = self.task_listbox.get(task_index)
 
         # Ask if user wants to remove any images with the task name
         if messagebox.askyesno("Remove data?", "Do you want to remove the task images from dataset?"):
-            for root, dirs, files in os.walk(self.dataset_folder):
-                for filename in files:
-                    if task_name in filename:
-                        os.remove(os.path.join(root, filename))
+            images_folder = os.path.join(self.dataset_folder, "images")
+            annotations_path = os.path.join(self.dataset_folder, "annotations.json")
+
+            # Load annotations
+            with open(annotations_path, 'r') as f:
+                annotations = json.load(f)
+
+            # Find and remove images and their annotations
+            images_to_remove = [image for image in annotations.keys() if task_name in image]
+
+            for image_name in images_to_remove:
+                # Remove image file
+                image_path = os.path.join(images_folder, image_name)
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+
+                # Remove from annotations
+                del annotations[image_name]
+
+            # Save updated annotations
+            with open(annotations_path, 'w') as f:
+                json.dump(annotations, f, indent=2)
 
         # Remove the source entry matching the task index
         self.source_entries.pop(task_index)
@@ -609,7 +683,7 @@ class CreateDataset:
         m = 2 ** 32
         return ((a * seed + c) % m) % 256
 
-    # Method which sets the task lisbox selection based on a matching name
+    # Method which sets the task listbox selection based on a matching name
     def set_task_selection(self, task_name):
         items = self.task_listbox.get(0, END)
         for index, item in enumerate(items):
@@ -619,6 +693,13 @@ class CreateDataset:
                 self.task_listbox.activate(index)
                 self.task_listbox.see(index)
                 break
+
+    # Method which updates the link output listbox selection mode
+    def update_output_listbox_selection(self):
+        if self.task_listbox.size() > 0:
+            self.link_output_listbox.config(selectmode='browse')
+        else:
+            self.link_output_listbox.config(selectmode='multiple')
 
     # Method which plots the source image
     def plot_source(self, task_name, image_path):
@@ -736,7 +817,8 @@ class CreateDataset:
             selectbackground=self.configuration.app_select_background_color,
             selectforeground=self.configuration.app_select_foreground_color,
             width=self.configuration.app_listbox_size,
-            exportselection=False
+            exportselection=False,
+            selectmode='multiple'
         )
 
         # Fetch the dpi

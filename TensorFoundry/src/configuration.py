@@ -6,11 +6,13 @@ from screeninfo import get_monitors
 class Configuration:
     def __init__(self):
         # Application
+        self.version = "0.1.0"
         self.screen_resolutions = [(monitor.width, monitor.height) for monitor in get_monitors()]
         self.window_size = 0.85
         self.window_width = int(min(monitor[0] for monitor in self.screen_resolutions) * self.window_size)
         self.window_height = int(min(monitor[1] for monitor in self.screen_resolutions) * self.window_size)
         self.refresh_rate = 100
+        self.max_value = 9999
 
         # Colours
         self.app_light_background_color = "#2E2E2E"
@@ -38,7 +40,11 @@ class Configuration:
 
         # Training
         self.epoch_count = 1000
+        self.loss_improvement_limit = 0.001
+        self.loss_decay_rate = 0.05
+        self.bad_epoch_limit = 5
         self.min_dataset_size = 20
+        self.shuffle_buffer_size = 10000
         self.validation_split = 0.2
         self.training_seed = 314159
         self.zoom_factor = 0.2
@@ -131,8 +137,20 @@ class Configuration:
                     if "EPOCH_COUNT" in config.upper():
                         self.epoch_count = int(value)
 
+                    if "LOSS_IMPROVEMENT_LIMIT" in config.upper():
+                        self.loss_improvement_limit = float(value)
+
+                    if "LOSS_DECAY_RATE" in config.upper():
+                        self.loss_decay_rate = float(value)
+
+                    if "BAD_EPOCH_LIMIT" in config.upper():
+                        self.bad_epoch_limit = int(value)
+
                     if "MIN_DATASET_SIZE" in config.upper():
                         self.min_dataset_size = int(value)
+
+                    if "SHUFFLE_BUFFER_SIZE" in config.upper():
+                        self.shuffle_buffer_size = int(value)
 
                     if "VALIDATION_SPLIT" in config.upper():
                         self.validation_split = float(value)

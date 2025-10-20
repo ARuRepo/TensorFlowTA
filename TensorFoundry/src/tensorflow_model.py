@@ -1,6 +1,8 @@
 import os
-import tensorflow as tf
+
 import coremltools as ct
+import math
+import tensorflow as tf
 
 
 class TensorflowModel(tf.Module):
@@ -29,11 +31,11 @@ class TensorflowModel(tf.Module):
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(128, activation='relu'),
             tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.Dense(output_size, activation='softmax', name="output")
+            tf.keras.layers.Dense(output_size, activation='sigmoid', name="output")
         ])
 
         # Set the name for the model
-        self.model.name = "SUPERVISED"
+        self.model.name = "TensorFoundry"
 
         # Print model summary
         self.model.summary()
@@ -41,15 +43,23 @@ class TensorflowModel(tf.Module):
         # Compile the model
         self.compile_model()
 
+        # Starting loss for the model
+        model_loss = float("inf")
+
         # Finally save the model
-        self.save_model(model_path, output_names)
+        self.save_model(model_path, model_loss, output_names)
 
     # Method for compiling the model
     def compile_model(self):
         self.model.compile(
             optimizer='adam',
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-            metrics=['accuracy'])
+            loss='binary_crossentropy',
+            metrics=[
+                'accuracy',
+                tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
+                tf.keras.metrics.Precision(name='precision'),
+                tf.keras.metrics.Recall(name='recall')
+            ])
 
     # Method for training a supervised model
     def train_model(self, model_path, epochs, training_dataset, validation_dataset, class_names, plot_results):
@@ -59,8 +69,11 @@ class TensorflowModel(tf.Module):
         self.log_message("Beginning training of model: {}".format(model_path))
 
         self.model.pop()
-        self.model.add(tf.keras.layers.Dense(len(class_names), activation='softmax', name="output"))
+        self.model.add(tf.keras.layers.Dense(len(class_names), activation='sigmoid', name="output"))
         self.compile_model()
+
+        # Read the minimum allowed loss in case of re-training
+        model_loss = self.get_model_loss(model_path)
 
         # Train the model
         self.log_message("Starting the supervised training sequence with {} epochs!".format(epochs.get()))
@@ -68,13 +81,26 @@ class TensorflowModel(tf.Module):
                        validation_data=validation_dataset,
                        epochs=epochs.get(),
                        callbacks=[TrainingCallback(
-                           self.log_message, self.refresh_application, plot_results, self.stop_training_check)])
+                           self.log_message,
+                           self.refresh_application,
+                           self.stop_training_check,
+                           self.configuration.loss_improvement_limit,
+                           self.configuration.loss_decay_rate,
+                           self.configuration.bad_epoch_limit,
+                           self.save_model,
+                           plot_results,
+                           model_path,
+                           class_names,
+                           model_loss)])
 
-        loss, accuracy = self.model.evaluate(validation_dataset, verbose=2)
-        self.log_message("Model test dataset accuracy: {:5.2f}% and loss: {:5.4f}".format(100 * accuracy, loss))
-
-        # Save the trained model
-        self.save_model(model_path, class_names)
+        # Evaluate the model which was saved last
+        self.model = tf.keras.models.load_model(model_path)
+        results = self.model.evaluate(validation_dataset, verbose=2, return_dict=True)
+        self.log_message("Model validation results:")
+        self.log_message(f"  Binary Accuracy: {results['binary_accuracy'] * 100:.2f}%")
+        self.log_message(f"  Precision: {results['precision']:.4f}")
+        self.log_message(f"  Recall: {results['recall']:.4f}")
+        self.log_message(f"  Loss: {results['loss']:.4f}")
 
     # Method for returning the current status of the stop training to the callback
     def stop_training_check(self):
@@ -83,6 +109,20 @@ class TensorflowModel(tf.Module):
     # Method for returning the input shape of a model
     def get_model_input(self, model_path):
         return tf.keras.models.load_model(model_path).input_shape[1:]
+
+    # Method which reads the stored loss of the model from the model output file
+    def get_model_loss(self, model_path):
+
+        # Establish the file path
+        model_name = os.path.splitext(os.path.basename(model_path))[0]
+        data_path = os.path.join(os.path.dirname(model_path), f"{model_name}_output.txt")
+
+        # If the file does not exist we return maximum value loss
+        if not os.path.isfile(data_path):
+            return float("inf")
+
+        with open(data_path, "r") as file:
+            return float(file.readline().strip())
 
     # Method for testing the model
     def test_model(self, model_path, test_state, class_names):
@@ -96,14 +136,15 @@ class TensorflowModel(tf.Module):
             self.log_message(f"{class_names[i]}: {value:.4f}")
 
     # Method for saving the model
-    def save_model(self, model_path, output_names):
+    def save_model(self, model_path, model_loss, output_names):
 
         model_name = os.path.splitext(os.path.basename(model_path))[0]
 
-        # Writing the output names into a file
-        labels_path = os.path.join(os.path.dirname(model_path), f"{model_name}_output_labels.txt")
+        # Writing the loss and output names into an output file
+        labels_path = os.path.join(os.path.dirname(model_path), f"{model_name}_output.txt")
 
         with open(labels_path, 'w') as file:
+            file.write(f"{model_loss}\n")
             for output_name in output_names: file.write(output_name + "\n")
 
         # Sanity check needed on certain platforms
@@ -155,27 +196,69 @@ class TrainingCallback(tf.keras.callbacks.Callback):
     def __init__(self,
                  log_message,
                  refresh_application,
+                 stop_training_check,
+                 loss_improvement_limit,
+                 loss_decay_rate,
+                 bad_epoch_limit,
+                 save_model,
                  plot_results,
-                 stop_training_check):
+                 model_path,
+                 class_names,
+                 min_loss):
         self.log_message = log_message
         self.refresh_application = refresh_application
-        self.plot_results = plot_results
         self.stop_training_check = stop_training_check
+        self.loss_improvement_limit = loss_improvement_limit
+        self.loss_decay_rate = loss_decay_rate
+        self.bad_epoch_limit = bad_epoch_limit
+        self.bad_epoch_count = 0
+        self.save_model = save_model
+        self.plot_results = plot_results
+        self.model_path = model_path
+        self.class_names = class_names
+        self.min_loss = min_loss
         self.plot_accuracy = [0.0]
         self.plot_loss = [0.0]
 
     def on_epoch_end(self, epoch, logs=None):
-        self.plot_accuracy.append(float("{:5.2f}".format(logs["accuracy"] * 100)))
-        self.plot_loss.append(float("{:5.4f}".format(logs["loss"])))
+        accuracy = logs.get("binary_accuracy", 0)
+        loss = logs.get("val_loss", float('inf'))
+        precision = logs.get("val_precision", 0)
+        recall = logs.get("val_recall", 0)
+
+        self.plot_accuracy.append(float("{:5.2f}".format(accuracy * 100)))
+        self.plot_loss.append(float("{:5.4f}".format(loss)))
         self.plot_results(self.plot_accuracy, self.plot_loss)
 
         self.log_message(
-            "Epoch {} accuracy: {:5.2f}% loss: {:5.4f}".format(epoch, logs["accuracy"] * 100, logs["loss"]))
+            "Epoch {} - Binary Accuracy: {:5.2f}% | Precision: {:.4f} | Recall: {:.4f} | Loss: {:5.4f}".format(
+                epoch,
+                accuracy * 100,
+                precision,
+                recall,
+                loss))
 
-        # Checking if we need to stop training and save the model
-        if self.stop_training_check():
-            self.log_message("Stopping model training at epoch {}!".format(epoch))
+        # Collapse detection
+        if precision == 0 and recall == 0:
+            self.bad_epoch_count += 1
+            self.log_message(f"Bad training epoch {epoch} current bad epoch count: {self.bad_epoch_count} "
+                             f"out of {self.bad_epoch_limit}")
+        else:
+            self.bad_epoch_count = 0
+
+        # Checking if we need to stop training
+        if self.bad_epoch_count >= self.bad_epoch_limit or self.stop_training_check():
+            self.log_message(f"Stopping model training at epoch {epoch}!")
             self.model.stop_training = True
+
+        # Calculating a dynamic limit used to save the model
+        dynamic_loss_limit = self.loss_improvement_limit * math.exp(-self.loss_decay_rate * epoch)
+
+        # Save model if validation loss improves
+        if loss < self.min_loss - dynamic_loss_limit and not self.model.stop_training:
+            self.min_loss = loss
+            self.save_model(self.model_path, self.min_loss, self.class_names)
+            self.log_message(f"New best model saved at epoch {epoch} with loss {loss:.4f}")
 
     def on_train_batch_end(self, batch, logs=None):
         self.refresh_application()

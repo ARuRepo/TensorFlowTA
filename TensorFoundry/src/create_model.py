@@ -50,7 +50,7 @@ class CreateModel:
 
         if load_outputs:
             with open(outputs_path, "r") as file:
-                lines = [label.strip() for label in file.readlines()]
+                lines = [label.strip() for label in file.readlines()[1:]]
                 self.output_listbox.delete(0, END)
                 for line in lines:
                     self.output_listbox.insert(END, line.strip())

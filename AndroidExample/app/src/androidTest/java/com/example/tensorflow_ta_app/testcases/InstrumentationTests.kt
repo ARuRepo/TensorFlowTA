@@ -3,14 +3,15 @@ package com.example.tensorflow_ta_app.testcases
 import android.Manifest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
+import com.example.tensorflow_ta_app.data.TestData.LoginViewAssertData
+import com.example.tensorflow_ta_app.data.TestData.FirstViewAssertData
+import com.example.tensorflow_ta_app.data.TestData.SecondViewAssertData
+import com.example.tensorflow_ta_app.data.TestData.ThirdViewAssertData
+import com.example.tensorflow_ta_app.data.TestData.NavigationData.NAVIGATE_FIRST_SCREEN
+import com.example.tensorflow_ta_app.data.TestData.NavigationData.NAVIGATE_SECOND_SCREEN
+import com.example.tensorflow_ta_app.data.TestData.NavigationData.NAVIGATE_THIRD_SCREEN
 import com.example.tensorflow_ta_app.tensorflow.agents.TestingAgent
 import com.example.tensorflow_ta_app.utilities.ActionUtils
-import com.example.tensorflow_ta_app.data.TestData.TaskData.NAVIGATE_FIRST_SCREEN
-import com.example.tensorflow_ta_app.data.TestData.TaskData.NAVIGATE_SECOND_SCREEN
-import com.example.tensorflow_ta_app.data.TestData.TaskData.NAVIGATE_THIRD_SCREEN
-import com.example.tensorflow_ta_app.data.TestData.AssertData.FIRST_SCREEN
-import com.example.tensorflow_ta_app.data.TestData.AssertData.SECOND_SCREEN
-import com.example.tensorflow_ta_app.data.TestData.AssertData.THIRD_SCREEN
 import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
@@ -26,8 +27,6 @@ class InstrumentationTests {
 
     private val testingAgent = TestingAgent()
     private val actionUtils = ActionUtils()
-
-    // NOTE: Run these with device frame disabled!
 
     @Rule
     @JvmField
@@ -53,31 +52,76 @@ class InstrumentationTests {
     }
 
     /**
-     * Test which navigates to the first screen and asserts it
+     * Test which asserts the login view contents
      */
     @Test
-    fun loginNavigateAssertFirstScreen() {
-        assertTrue(testingAgent.performTaskAndAssert(NAVIGATE_FIRST_SCREEN, FIRST_SCREEN))
-    }
+    fun assertLoginView() {
 
-    /**
-     * Test which navigates to the second screen and asserts it
-     */
-    @Test
-    fun loginNavigateAssertSecondScreen() {
-        with(testingAgent){
-            assertTrue(performTaskAndAssert(NAVIGATE_SECOND_SCREEN, SECOND_SCREEN))
+        val viewEntities = listOf(
+            LoginViewAssertData.LOGIN_TITLE,
+            LoginViewAssertData.USER_NAME_FIELD,
+            LoginViewAssertData.PASSWORD_FIELD,
+            LoginViewAssertData.LOGIN_BUTTON
+        )
+
+        with(testingAgent) {
+            assertTrue(assertViewEntities(viewEntities))
         }
     }
 
     /**
-     * Test which navigates to the third screen and asserts it
+     * Test which navigates to the first view and asserts the contents
      */
     @Test
-    fun loginNavigateAssertThirdScreen() {
-        with(testingAgent){
-            performTask(NAVIGATE_THIRD_SCREEN)
-            assertTrue(assertState(THIRD_SCREEN))
+    fun loginNavigateAssertFirstView() {
+
+        val viewEntities = listOf(
+            FirstViewAssertData.VIEW_TITLE,
+            FirstViewAssertData.SQUARE_SHAPE,
+            FirstViewAssertData.NEXT_BUTTON,
+            FirstViewAssertData.BACK_BUTTON,
+            FirstViewAssertData.LOGOUT_BUTTON
+        )
+
+        assertTrue(testingAgent.navigateAndAssert(NAVIGATE_FIRST_SCREEN, viewEntities))
+    }
+
+    /**
+     * Test which navigates to the second view and asserts the contents
+     */
+    @Test
+    fun loginNavigateAssertSecondView() {
+
+        val viewEntities = listOf(
+            SecondViewAssertData.VIEW_TITLE,
+            SecondViewAssertData.CIRCLE_SHAPE,
+            SecondViewAssertData.NEXT_BUTTON,
+            SecondViewAssertData.BACK_BUTTON,
+            SecondViewAssertData.LOGOUT_BUTTON
+        )
+
+        with(testingAgent) {
+            assertTrue(navigateAndAssert(NAVIGATE_SECOND_SCREEN, viewEntities))
+        }
+    }
+
+    /**
+     * Test which navigates to the third view and asserts the contents
+     */
+    @Test
+    fun loginNavigateAssertThirdView() {
+
+        val viewEntities = listOf(
+            ThirdViewAssertData.VIEW_TITLE,
+            ThirdViewAssertData.SQUIRCLE_SHAPE,
+            ThirdViewAssertData.NEXT_BUTTON,
+            ThirdViewAssertData.BACK_BUTTON,
+            ThirdViewAssertData.LOGOUT_BUTTON
+        )
+
+        with(testingAgent) {
+            performNavigation(NAVIGATE_THIRD_SCREEN)
+            assertTrue(assertViewEntities(viewEntities))
         }
     }
 }
