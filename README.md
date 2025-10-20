@@ -16,8 +16,8 @@ The main points of this entire project are to figure out the following:
 
 ###
 
-The idea is to train a couple of models to have a ML model make decisions on what to do in terms of app navigation and further assert 
-view contents using multi-label classification models.
+The idea is to train ML models one of which is used to make decisions on what to do in terms of app navigation and other models to assert 
+view contents using multi-label classification.
 
 ###
 
