@@ -16,7 +16,7 @@ class TestingAgent : TestingModel() {
     private val actionUtils = ActionUtils()
     private val taskLabels: List<String> = ActionData.entries.map { it.name }
     private val taskComplete = ActionData.TASK_COMPLETE
-    private val inferenceLimit = 0.3f
+    private val inferenceLimit = 0.8f
     private val actionsLimit = 10
     private val navigationModel = createModel("navigation_model.tflite")
     private val assertModelsMap = mapOf(
