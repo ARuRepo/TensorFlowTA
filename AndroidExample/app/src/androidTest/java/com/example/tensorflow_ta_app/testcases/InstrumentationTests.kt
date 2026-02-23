@@ -20,7 +20,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Navigation training tests used for on device training of the model, some syntax examples used
+ * Some basic test cases using the ML model to navigate and assert the views
  */
 @RunWith(AndroidJUnit4::class)
 class InstrumentationTests {

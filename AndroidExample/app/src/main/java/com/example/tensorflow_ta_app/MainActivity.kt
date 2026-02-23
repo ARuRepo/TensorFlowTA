@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                         .semantics {
                             testTagsAsResourceId = true
                         },
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     MainView()
                 }
